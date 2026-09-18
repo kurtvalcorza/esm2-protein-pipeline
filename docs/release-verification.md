@@ -105,7 +105,7 @@ A known-failing default path in the supported runtime blocks release (REL11).
 
 | Notebook | Commit / notebook blob | Date (UTC) | Executor | Outcome |
 |---|---|---|---|---|
-| `esm2_protein_colab.ipynb` | `__LOCAL_ROW__` | 2026-09-18 | Local pre-flight harness (Windows, CPython 3.12, CPU, `google.colab` shim, pins pre-installed) | PASS — pre-flight only, **not** promotion evidence |
+| `esm2_protein_colab.ipynb` | `ae499e1` / `638ec73e83d6` | 2026-09-18 | Local pre-flight harness (Windows, CPython 3.12, CPU, `google.colab` shim, pins pre-installed) | PASS — pre-flight only, **not** promotion evidence |
 
 ## Recorded executions
 
@@ -116,7 +116,7 @@ general estimates.
 
 | Date (UTC) | Commit / notebook blob | Executor | Path exercised | Wall | Outcome |
 |---|---|---|---|---|---|
-| 2026-09-18 | `__LOCAL_ROW__` | Local pre-flight harness (Windows, CPython 3.12, CPU float32) | Default sample path (validate → split → embed → baselines → adapt → evaluate → classify → export → reload) | __LOCAL_WALL__ | **PASSED** — pre-flight; hosted clean-runtime run still required |
+| 2026-09-18 | `ae499e1` / `638ec73e83d6` | Local pre-flight harness (Windows, CPython 3.12, CPU float32) | Default sample path (validate → split → embed → baselines → adapt → evaluate → classify → export → reload) | 92.9 s | **PASSED** — pre-flight; hosted clean-runtime run still required |
 
 ## Current status
 
