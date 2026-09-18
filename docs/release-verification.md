@@ -105,6 +105,7 @@ A known-failing default path in the supported runtime blocks release (REL11).
 
 | Notebook | Commit / notebook blob | Date (UTC) | Executor | Outcome |
 |---|---|---|---|---|
+| `esm2_protein_colab.ipynb` | `22df052` / `638ec73e83d6` | 2026-09-18 | Kaggle batch kernel `dimer-nb2-esm2-protein` v1 (Python 3.12.13, Tesla T4, empty Hugging Face cache, no repository checkout) | **PASS** — 13/13 code cells after the expected fresh-process restart following dependency installation; supported clean-runtime evidence |
 | `esm2_protein_colab.ipynb` | `ae499e1` / `638ec73e83d6` | 2026-09-18 | Local pre-flight harness (Windows, CPython 3.12, CPU, `google.colab` shim, pins pre-installed) | PASS — pre-flight only, **not** promotion evidence |
 
 ## Recorded executions
@@ -116,11 +117,12 @@ general estimates.
 
 | Date (UTC) | Commit / notebook blob | Executor | Path exercised | Wall | Outcome |
 |---|---|---|---|---|---|
+| 2026-09-18 | `22df052` / `638ec73e83d6` | Kaggle batch kernel `dimer-nb2-esm2-protein` v1 (Python 3.12.13, Tesla T4, clean cache) | Default sample path (download and verify 6 model files → validate → split → embed → baselines → adapt → evaluate → classify → export → reload) | 243.7 s | **PASSED** — 13/13 code cells; test accuracy/macro-F1/AUROC 1.0 (n=20) against majority accuracy 0.5; reload parity 0.0. One expected fresh-process restart followed the install cell. |
 | 2026-09-18 | `ae499e1` / `638ec73e83d6` | Local pre-flight harness (Windows, CPython 3.12, CPU float32) | Default sample path (validate → split → embed → baselines → adapt → evaluate → classify → export → reload) | 92.9 s | **PASSED** — pre-flight; hosted clean-runtime run still required |
 
 ## Current status
 
-The notebook source is complete and passes all static checks, including the generator parity checks (`--check` OK).
-A local pre-flight execution of the committed blob completed the whole default path on CPU, which catches defects but
-is **not** a supported runtime under REL1/REL10. The repository stays at **Candidate** until a Colab or fresh-container
-run of the exact release revision is recorded above.
+The exact notebook blob passed the complete default path in a clean Kaggle Tesla T4 runtime with an empty Hugging Face
+cache and no repository checkout. This satisfies the hosted clean-runtime execution gate for the recorded revision.
+The maintainer approved promotion on 2026-09-18, so the repository is **Release-grade** for this verified tutorial
+carrier. The execution record remains sample-sanity evidence, not a benchmark or production-readiness claim.
