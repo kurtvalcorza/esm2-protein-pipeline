@@ -42,7 +42,7 @@ Two tasks are exposed. **Sequence representation:** input is 1 to `MAX_SEQUENCES
 
 ###### Primary Intended Users
 
-Intended users are machine-learning engineers, computational biologists and bioinformaticians building or evaluating protein-sequence models, in research, internal enterprise, or the DIMER model workbench. The pipeline assumes its users understand that a pretrained protein language model encodes sequence statistics rather than validated biology; that a random split of homologous sequences leaks information and inflates every metric, so homology-aware splitting is their responsibility (the pipeline does not detect homology); that the softmax scores it returns are uncalibrated; that sequences beyond 1,022 residues are refused rather than truncated and must be split or the request rethought by the caller; and that a fine-tuned classifier is only as good as the labels supplied, which the pipeline cannot audit.
+Intended users are machine-learning engineers, computational biologists and bioinformaticians building or evaluating protein-sequence models, in research or in-house enterprise use. The pipeline assumes its users understand that a pretrained protein language model encodes sequence statistics rather than validated biology; that a random split of homologous sequences leaks information and inflates every metric, so homology-aware splitting is their responsibility (the pipeline does not detect homology); that the softmax scores it returns are uncalibrated; that sequences beyond 1,022 residues are refused rather than truncated and must be split or the request rethought by the caller; and that a fine-tuned classifier is only as good as the labels supplied, which the pipeline cannot audit.
 
 ###### Out-of-scope use cases
 
