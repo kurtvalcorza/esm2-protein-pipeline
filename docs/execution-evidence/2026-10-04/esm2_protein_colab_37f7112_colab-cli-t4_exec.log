@@ -1,0 +1,80 @@
+[colab] Parsing notebook '/home/kurt/colab-runs/esm2-protein-pipeline-37f7112-4cf710/esm2_protein_colab_37f7112_colab-cli-t4.ipynb'...
+[colab] Executing cell 1/16 - Infrastructure: install the locked runtime into an isolated environment...
+{'isolated_environment': '/content/dimer_isolated_env', 'isolated_python': '3.12.12', 'kernel_python': '3.13.15', 'locked_packages': 47, 'setup_seconds': 49}
+[colab] Executing cell 2/16 - Infrastructure: route the remaining cells to the isolated environment...
+Every later code cell now runs in /content/dimer_isolated_env/bin/python (pid 1050).
+[colab] Executing cell 3/16 - Infrastructure: record the runtime...
+{'notebook_source': {'repository': 'esm2-protein-pipeline', 'repository_revision': '23be8f53194f4ed45202cc29df8f593d62c9492d', 'embedded_module': 'src/esm2_protein_pipeline/pipeline.py', 'embedded_modules': ['src/esm2_protein_pipeline/pipeline.py', 'src/esm2_protein_pipeline/samples.py', 'src/esm2_protein_pipeline/metrics.py'], 'module_sha256': 'e71f9df905c654e6802aa4f74f016d529cd5b89d67a758038c2852336b063e06', 'generator': 'build_notebook.py/2.1', 'notebook_spec': '2.2'}, 'python': '3.12.12', 'torch': '2.14.0+cu130', 'transformers': '4.57.6', 'safetensors': '0.8.0', 'cuda': True}
+[colab] Executing cell 4/16 - Infrastructure: carried module `src/esm2_protein_pipeline/pipeline.py` (you may run it without reading it)...
+[colab] Executing cell 5/16 - Infrastructure: carried module `src/esm2_protein_pipeline/samples.py` (you may run it without reading it)...
+[colab] Executing cell 6/16 - Infrastructure: carried module `src/esm2_protein_pipeline/metrics.py` (you may run it without reading it)...
+[colab] Executing cell 7/16 - Infrastructure: pin, stage and verify the model (you may run it without reading it)...
+{'model_id': 'facebook/esm2_t30_150M_UR50D', 'revision': 'a695f6045e2e32885fa60af20c13cb35398ce30c', 'license': 'mit', 'files': 6, 'total_bytes': 595260503}
+{'weights_dir': '/content/weights/esm2-t30-150m-ur50d', 'fetched': ['README.md', 'config.json', 'model.safetensors', 'special_tokens_map.json', 'tokenizer_config.json', 'vocab.txt']}
+{'verified_files': 6, 'revision': 'a695f6045e2e32885fa60af20c13cb35398ce30c'}
+{'device': 'cuda:0', 'source': 'local-snapshot'}
+[colab] Executing cell 8/16 - esm2_protein-17...
+{'data_source': 'synthetic hydrophobic-segment dataset (seed 20260918, 96 records)', 'n_records': 96, 'classes': ['scattered', 'segment'], 'class_counts': {'scattered': 48, 'segment': 48}}
+{'residues': {'min': 60, 'max': 119, 'mean': 93.1}, 'ceilings': {'max_residues': 1022, 'max_records': 5000, 'max_classes': 20, 'min_records': 12, 'min_records_per_class': 3}, 'digest': 'e0f9803e0c47ef73...'}
+{'train': {'n': 56, 'class_counts': {'scattered': 28, 'segment': 28}}, 'validation': {'n': 20, 'class_counts': {'scattered': 10, 'segment': 10}}, 'test': {'n': 20, 'class_counts': {'scattered': 10, 'segment': 10}}}
+{'written': 'outputs/esm2_protein_sample_dataset.csv'}
+{'example_id': 'seg-043', 'label': 'segment', 'residues': 104, 'longest_hydrophobic_run': 20, 'hydrophobic_fraction': 0.192}
+GQRSRHGYGKQTDTDQDEPSQPQEGGESDIWLWFMAFLIAFFAVWWMFISYPDDGEPSSGCTNPCCSGQYDDCGQDPYEGTPHDPKGGGCQDTTKGRRRKSGDS
+[colab] Executing cell 9/16 - esm2_protein-19...
+{'n_sequences': 8, 'dimension': 640, 'pooling': 'mean of the last hidden state over residue tokens (cls/eos/pad excluded)'}
+{'mean_cosine_within_class': 0.961, 'mean_cosine_between_classes': 0.9434, 'note': 'inspection only; embeddings are unlabelled representations'}
+wrote outputs/esm2_protein_embeddings.csv
+[colab] Executing cell 10/16 - esm2_protein-21...
+{'baseline': 'majority', 'kind': 'order-blind', 'rule': 'scattered', 'train_accuracy': None, 'test_accuracy': 0.5, 'test_macro_f1': 0.3333, 'test_auroc': None}
+{'baseline': 'residue_composition', 'kind': 'order-blind', 'rule': 'predict the class whose mean training composition is nearest (Euclidean)', 'train_accuracy': 0.9286, 'test_accuracy': 0.75, 'test_macro_f1': 0.7442, 'test_auroc': 0.8}
+{'baseline': 'hydrophobic_fraction', 'kind': 'order-blind', 'rule': "predict 'segment' when fraction < 0.2065", 'train_accuracy': 0.6071, 'test_accuracy': 0.45, 'test_macro_f1': 0.4373, 'test_auroc': 0.47}
+{'baseline': 'longest_hydrophobic_run', 'kind': 'order-aware', 'rule': "predict 'segment' when longest hydrophobic run >= 18", 'train_accuracy': 1.0, 'test_accuracy': 1.0, 'test_macro_f1': 1.0, 'test_auroc': 1.0}
+[colab] Executing cell 11/16 - esm2_protein-23...
+Some weights of EsmForSequenceClassification were not initialized from the model checkpoint at /content/weights/esm2-t30-150m-ur50d and are newly initialized: ['classifier.dense.bias', 'classifier.dense.weight', 'classifier.out_proj.bias', 'classifier.out_proj.weight']
+You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.
+{'method': 'gradient fine-tuning (AdamW) of the classification head and the last 2 encoder layer(s)', 'trainable_parameters': 10259842, 'total_parameters': 148140123, 'precision': 'float32', 'device': 'cuda:0', 'seconds': 4.8}
+{'epoch': 1, 'train_loss': 0.693917, 'n_batches': 7, 'val_accuracy': 0.85, 'val_macro_f1': 0.8466}
+{'epoch': 2, 'train_loss': 0.635769, 'n_batches': 7, 'val_accuracy': 1.0, 'val_macro_f1': 1.0}
+{'epoch': 3, 'train_loss': 0.557121, 'n_batches': 7, 'val_accuracy': 1.0, 'val_macro_f1': 1.0}
+{'epoch': 4, 'train_loss': 0.393581, 'n_batches': 7, 'val_accuracy': 1.0, 'val_macro_f1': 1.0}
+[colab] Executing cell 12/16 - esm2_protein-25...
+{'split': 'validation', 'n': 20, 'accuracy': 1.0, 'macro_f1': 1.0, 'auroc': 1.0}
+{'split': 'test', 'n': 20, 'accuracy': 1.0, 'macro_f1': 1.0, 'auroc': 1.0}
+{'class': 'scattered', 'precision': 1.0, 'recall': 1.0, 'f1': 1.0, 'support': 10, 'predicted': 10}
+{'class': 'segment', 'precision': 1.0, 'recall': 1.0, 'f1': 1.0, 'support': 10, 'predicted': 10}
+{'test_split': 'majority', 'accuracy': 0.5, 'macro_f1': 0.3333, 'auroc': None}
+{'test_split': 'residue_composition', 'accuracy': 0.75, 'macro_f1': 0.7442, 'auroc': 0.8}
+{'test_split': 'hydrophobic_fraction', 'accuracy': 0.45, 'macro_f1': 0.4373, 'auroc': 0.47}
+{'test_split': 'longest_hydrophobic_run', 'accuracy': 1.0, 'macro_f1': 1.0, 'auroc': 1.0}
+{'test_split': 'fine_tuned', 'accuracy': 1.0, 'macro_f1': 1.0, 'auroc': 1.0}
+{'delta_vs_baselines': {'majority': 0.5, 'residue_composition': 0.25, 'hydrophobic_fraction': 0.55, 'longest_hydrophobic_run': 0.0}, 'report': 'outputs/esm2_protein_evaluation_report.json'}
+[colab] Executing cell 13/16 - esm2_protein-27...
+{'new_source': 'freshly generated sequences (seed 7)', 'verdict': 'accepted', 'n_sequences': 6, 'max_residues_observed': 103}
+{'decision_rule': 'argmax over softmax(logits); scores are softmax outputs, not calibrated probabilities'}
+{'id': 'seg-000', 'predicted': 'segment', 'score': 0.6596, 'true_label': 'segment'}
+{'id': 'sca-000', 'predicted': 'scattered', 'score': 0.7009, 'true_label': 'scattered'}
+{'id': 'seg-001', 'predicted': 'segment', 'score': 0.8462, 'true_label': 'segment'}
+{'id': 'sca-001', 'predicted': 'scattered', 'score': 0.7039, 'true_label': 'scattered'}
+{'id': 'seg-002', 'predicted': 'segment', 'score': 0.572, 'true_label': 'segment'}
+{'id': 'sca-002', 'predicted': 'scattered', 'score': 0.6283, 'true_label': 'scattered'}
+{'matches': 6, 'of': 6, 'note': 'sanity check on generated labels, not an evaluation'}
+wrote outputs/esm2_protein_predictions.csv
+[colab] Executing cell 14/16 - esm2_protein-29...
+{'format': 'org.valcorza.esm2-protein.adapter.v1', 'base_model': {'model_id': 'facebook/esm2_t30_150M_UR50D', 'model_revision': 'a695f6045e2e32885fa60af20c13cb35398ce30c', 'license': 'mit'}, 'classes': ['scattered', 'segment'], 'trainable_layers': 2, 'n_tensors': 38, 'files': [{'path': 'adapter.safetensors', 'bytes': 41043560, 'sha256': '402021e876e4695e6c6bc3ae03b2d3eceb1f8f66107bc5a393d881d423378d9a'}]}
+Some weights of EsmForSequenceClassification were not initialized from the model checkpoint at /content/weights/esm2-t30-150m-ur50d and are newly initialized: ['classifier.dense.bias', 'classifier.dense.weight', 'classifier.out_proj.bias', 'classifier.out_proj.weight']
+You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.
+{'reload_parity': 'PASS', 'labels_equal': True, 'max_abs_score_diff': 0.0, 'loaded_from': 'outputs/esm2_protein_adapter'}
+[colab] Executing cell 15/16 - esm2_protein-31...
+outputs/:
+  - outputs/esm2_protein_adapter/adapter.safetensors (40081.6 KB)
+  - outputs/esm2_protein_adapter/manifest.json (3.8 KB)
+  - outputs/esm2_protein_embeddings.csv (52.5 KB)
+  - outputs/esm2_protein_evaluation_report.json (6.9 KB)
+  - outputs/esm2_protein_predictions.csv (0.3 KB)
+  - outputs/esm2_protein_result.json (15.5 KB)
+  - outputs/esm2_protein_sample_dataset.csv (10.5 KB)
+[colab] Executing cell 16/16 - esm2_protein-33...
+run | data | trainable_layers | epochs | learning_rate | trainable_parameters | final_val_accuracy | test_accuracy | test_macro_f1 | test_auroc
+1 | sample | 2 | 4 | 0.0001 | 10259842 | 1.0 | 1.0 | 1.0 | 1.0
+One run so far. Set TRAINABLE_LAYERS = 0 in Section 7, select that cell and choose Runtime > Run after; this table then shows both runs.
+[colab] Saving notebook with outputs to '/home/kurt/colab-runs/esm2-protein-pipeline-37f7112-4cf710/esm2_protein_colab_37f7112_colab-cli-t4_output.ipynb'...

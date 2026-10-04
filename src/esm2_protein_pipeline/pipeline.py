@@ -352,12 +352,28 @@ class ESM2Pipeline:
             "adaptation": dict(self.adaptation),
         }
 
+    def reset_adaptation(self) -> None:
+        """Drop any adapted head (and its class list), so `classify`, `evaluate` and `save_artifact`
+        refuse to run until `adapt` or `load_artifact` succeeds again. The verified base encoder used by
+        `embed` is untouched. The tutorial calls it whenever the dataset changes (review ESM-M3), so a
+        failed adaptation on new data can never leave an earlier head to be evaluated or exported."""
+        self.classes = []
+        self._classifier = None
+        self.classifier_model = None
+        self.adaptation = {}
+
     def evaluate(self, records: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
-        """Held-out classification metrics over labelled records (see metrics.classification_metrics)."""
+        """Held-out classification metrics over labelled records (see metrics.classification_metrics).
+
+        Any non-empty labelled split whose labels belong to the adapted classes is accepted; the
+        12-record dataset minimum applies to a whole dataset, not to one of its splits (review ESM-M3).
+        """
         from .metrics import classification_metrics
         from .samples import validate_dataset
 
-        validate_dataset(records, classes=self.classes)
+        if self._classifier is None or not self.classes:
+            raise RuntimeError("evaluate requires an adapted head (call adapt or load_artifact first)")
+        validate_dataset(records, classes=self.classes, min_records=1, min_per_class=0)
         sequences = [r["sequence"] for r in records]
         ids = [r["id"] for r in records]
         predicted: list[str] = []
@@ -391,21 +407,32 @@ class ESM2Pipeline:
         newly initialised), freezes every parameter except the head and the last `trainable_layers`
         encoder layers, and runs AdamW for `epochs` passes. Validation records are monitored per
         epoch only; the final epoch's weights are kept (no selection).
+
+        Each split must hold every class at least once (`samples.MIN_SPLIT_RECORDS_PER_CLASS`); a
+        refusal names the split. Any earlier head is dropped first, so a refused or failed call leaves
+        no head behind (review ESM-M3).
         """
         if self.model is None or self.tokenizer is None:
             raise RuntimeError("adapt requires a pipeline built by from_pretrained (no loaded base model)")
         from .samples import validate_dataset
 
+        self.reset_adaptation()
         if not 1 <= int(epochs) <= 50:
             raise ValueError("epochs must be in 1..50 (tutorial-scale adaptation)")
         if not 1 <= int(batch_size) <= MAX_SEQUENCES_PER_CALL:
             raise ValueError(f"batch_size must be in 1..{MAX_SEQUENCES_PER_CALL}")
         if not 0 <= int(trainable_layers) <= 30:
             raise ValueError("trainable_layers must be in 0..30")
-        train_manifest = validate_dataset(train_records, classes=classes)
+        try:
+            train_manifest = validate_dataset(train_records, classes=classes, min_records=1, min_per_class=1)
+        except (TypeError, ValueError) as exc:
+            raise type(exc)(f"train split: {exc}") from exc
         class_list = list(train_manifest["classes"])
         if val_records is not None:
-            validate_dataset(val_records, classes=class_list)
+            try:
+                validate_dataset(val_records, classes=class_list, min_records=1, min_per_class=1)
+            except (TypeError, ValueError) as exc:
+                raise type(exc)(f"validation split: {exc}") from exc
 
         import random
 

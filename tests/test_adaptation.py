@@ -51,7 +51,7 @@ def test_sample_dataset_is_deterministic_balanced_and_valid():
     assert generate_sample_dataset(seed=7) != a
 
 
-def test_sample_classes_share_composition_but_differ_in_order():
+def test_sample_classes_share_hydrophobic_count_but_differ_in_order():
     records = generate_sample_dataset()
     by_label = {label: [r["sequence"] for r in records if r["label"] == label] for label in SAMPLE_CLASSES}
     for seg, sca in zip(by_label["segment"], by_label["scattered"], strict=True):
@@ -181,7 +181,7 @@ def test_baselines_fit_on_train_only():
     comp = composition_baseline(splits["train"], splits["test"], classes)
     assert comp["baseline"] == "hydrophobic-fraction threshold"
     assert 0.0 <= comp["accuracy"] <= 1.0 and comp["auroc"] is not None
-    # By construction the classes share their composition, so the baseline cannot separate them well.
+    # Each pair shares its hydrophobic count by construction, so this one feature cannot separate the classes.
     assert comp["accuracy"] <= 0.7
     with pytest.raises(ValueError, match="binary"):
         composition_baseline(splits["train"], splits["test"], ["a", "b", "c"])

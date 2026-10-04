@@ -3,14 +3,21 @@
 Pure Python (no scikit-learn): accuracy, macro-F1, per-class precision/recall/F1/support, and AUROC
 (binary: positive class = the last entry of `classes`; multiclass: macro one-vs-rest), computed by
 the Mann-Whitney rank statistic with average ranks for ties.
+
+Four trivial baselines frame a fine-tuned model (EVAL10/EVAL11): the majority class; one threshold on the
+hydrophobic residue fraction (the one composition feature the sample generator equalises); a nearest-centroid
+rule on the full 20-residue composition (order-blind); and one threshold on the longest hydrophobic run (an
+order-aware one-line rule). All are fitted on the training split only (SPL8).
 """
 
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from .samples import hydrophobic_fraction
+from .pipeline import STANDARD_AMINO_ACIDS
+from .samples import hydrophobic_fraction, longest_hydrophobic_run
 
 
 def _prf(hits: int, n_pred: int, n_true: int) -> dict[str, float]:
@@ -114,23 +121,23 @@ def majority_baseline(
     return {"baseline": "majority-class", "predicted_label": majority, **metrics}
 
 
-def composition_baseline(
+def _threshold_baseline(
     train_records: Sequence[Mapping[str, Any]],
     eval_records: Sequence[Mapping[str, Any]],
     classes: Sequence[str],
+    feature: Any,
+    *,
+    name: str,
+    feature_name: str,
+    caller: str,
+    threshold_format: str = ".4f",
 ) -> dict[str, Any]:
-    """Threshold on the hydrophobic residue fraction, fitted on the training split (binary only).
-
-    The threshold and the class direction are chosen to maximise training accuracy; the evaluation
-    split is never touched during fitting (SPL8). On the synthetic sample the two classes share
-    their composition by construction, so this baseline is expected to sit near chance -- which
-    is the point: it shows the fine-tuned model reads order, not counts.
-    """
+    """One threshold on a scalar sequence feature, direction and cut chosen for training accuracy (binary)."""
     class_list = list(classes)
     if len(class_list) != 2:
-        raise ValueError("composition_baseline is defined for binary tasks only")
+        raise ValueError(f"{caller} is defined for binary tasks only")
     lo, hi = class_list
-    train_x = [hydrophobic_fraction(r["sequence"]) for r in train_records]
+    train_x = [float(feature(r["sequence"])) for r in train_records]
     train_y = [r["label"] for r in train_records]
     candidates = sorted(set(train_x))
     best = (-1.0, 0.0, True)  # accuracy, threshold, high_is_hi
@@ -141,15 +148,115 @@ def composition_baseline(
             if acc > best[0]:
                 best = (acc, t, high_is_hi)
     _, threshold, high_is_hi = best
-    eval_x = [hydrophobic_fraction(r["sequence"]) for r in eval_records]
+    eval_x = [float(feature(r["sequence"])) for r in eval_records]
     eval_pred = [(hi if (x >= threshold) == high_is_hi else lo) for x in eval_x]
-    # Score for AUROC: the fraction itself, oriented so that a larger score favours `hi`.
+    # Score for AUROC: the feature itself, oriented so that a larger score favours `hi`.
     scores = [[1.0 - x, x] if high_is_hi else [x, 1.0 - x] for x in eval_x]
     metrics = classification_metrics([r["label"] for r in eval_records], eval_pred, scores, class_list)
     return {
-        "baseline": "hydrophobic-fraction threshold",
+        "baseline": name,
         "threshold": round(threshold, 4),
-        "rule": f"predict {hi!r} when fraction {'>=' if high_is_hi else '<'} {threshold:.4f}",
+        "rule": f"predict {hi!r} when {feature_name} {'>=' if high_is_hi else '<'} "
+        f"{threshold:{threshold_format}}",
         "train_accuracy": round(best[0], 4),
+        **metrics,
+    }
+
+
+def composition_baseline(
+    train_records: Sequence[Mapping[str, Any]],
+    eval_records: Sequence[Mapping[str, Any]],
+    classes: Sequence[str],
+) -> dict[str, Any]:
+    """Threshold on the hydrophobic residue fraction, fitted on the training split (binary only).
+
+    The threshold and the class direction are chosen to maximise training accuracy; the evaluation
+    split is never touched during fitting (SPL8). On the synthetic sample every `scattered` record has
+    the hydrophobic count of a `segment` record, so this one feature cannot separate the classes. That
+    does not make the classes equal in composition: see `residue_composition_baseline`.
+    """
+    return _threshold_baseline(
+        train_records,
+        eval_records,
+        classes,
+        hydrophobic_fraction,
+        name="hydrophobic-fraction threshold",
+        feature_name="fraction",
+        caller="composition_baseline",
+    )
+
+
+def longest_run_baseline(
+    train_records: Sequence[Mapping[str, Any]],
+    eval_records: Sequence[Mapping[str, Any]],
+    classes: Sequence[str],
+) -> dict[str, Any]:
+    """Threshold on `longest_hydrophobic_run`, fitted on the training split (binary only).
+
+    An order-aware one-line rule: it reads where the hydrophobic residues sit, not how many there are.
+    On the synthetic sample it is the rule that defines the classes, so a fine-tuned model can at best
+    equal it there (review ESM-M2).
+    """
+    return _threshold_baseline(
+        train_records,
+        eval_records,
+        classes,
+        longest_hydrophobic_run,
+        name="longest-hydrophobic-run threshold",
+        feature_name="longest hydrophobic run",
+        caller="longest_run_baseline",
+        threshold_format="g",
+    )
+
+
+def residue_composition(sequence: str) -> list[float]:
+    """Fractions of the 20 standard residues, in `STANDARD_AMINO_ACIDS` order (order-blind)."""
+    n = len(sequence) or 1
+    return [sequence.count(ch) / n for ch in STANDARD_AMINO_ACIDS]
+
+
+def residue_composition_baseline(
+    train_records: Sequence[Mapping[str, Any]],
+    eval_records: Sequence[Mapping[str, Any]],
+    classes: Sequence[str],
+) -> dict[str, Any]:
+    """Nearest class centroid of the 20-residue composition vector, fitted on the training split.
+
+    Order-blind: shuffling a sequence leaves its prediction unchanged. Any number of classes. The class
+    scores are a softmax over negative Euclidean distances to the centroids (a ranking, not a probability).
+    """
+    class_list = list(classes)
+    sums: dict[str, list[float]] = {c: [0.0] * len(STANDARD_AMINO_ACIDS) for c in class_list}
+    counts: dict[str, int] = {c: 0 for c in class_list}
+    for r in train_records:
+        acc = sums[r["label"]]
+        for k, v in enumerate(residue_composition(r["sequence"])):
+            acc[k] += v
+        counts[r["label"]] += 1
+    empty = [c for c in class_list if not counts[c]]
+    if empty:
+        raise ValueError(f"classes {empty} have no training records; cannot fit a centroid")
+    centroids = {c: [v / counts[c] for v in sums[c]] for c in class_list}
+
+    def predict(records: Sequence[Mapping[str, Any]]) -> tuple[list[str], list[list[float]]]:
+        labels, scores = [], []
+        for r in records:
+            vec = residue_composition(r["sequence"])
+            dist = [math.dist(vec, centroids[c]) for c in class_list]
+            labels.append(class_list[min(range(len(class_list)), key=dist.__getitem__)])
+            nearest = min(dist)
+            exps = [math.exp(nearest - d) for d in dist]
+            total = sum(exps)
+            scores.append([e / total for e in exps])
+        return labels, scores
+
+    train_pred, _ = predict(train_records)
+    hits = sum(p == r["label"] for p, r in zip(train_pred, train_records, strict=True))
+    eval_pred, eval_scores = predict(eval_records)
+    metrics = classification_metrics([r["label"] for r in eval_records], eval_pred, eval_scores, class_list)
+    return {
+        "baseline": "20-residue composition nearest centroid",
+        "rule": "predict the class whose mean training composition is nearest (Euclidean)",
+        "train_accuracy": round(hits / len(train_records), 4) if train_records else 0.0,
         **metrics,
     }
