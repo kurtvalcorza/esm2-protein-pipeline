@@ -1,6 +1,6 @@
 """Static release-asset validation for the ESM-2 150M protein sequence-classification DIMER pipeline.
 
-Checks the STANDALONE tutorial notebook (DIMER Notebook Specification 2.0 §4), the tutorial
+Checks the STANDALONE tutorial notebook (DIMER Notebook Specification 2.2 §4), the tutorial
 registry, model card, README, STATUS.md and weight documentation for source conformance and
 cross-document identity consistency, and runs the generator parity checks (PAR1–PAR3).
 
@@ -49,13 +49,27 @@ CODE_MARKERS = (
     "records = load_byod_dataset(byod_path)",
     "dataset_manifest = validate_dataset(records)",
     "splits = split_dataset(records, val_fraction=VAL_FRACTION, test_fraction=TEST_FRACTION, seed=SEED)",
-    "write_dataset_csv(records, 'outputs/esm2_protein_sample_dataset.csv')",
+    # ESM-M3 / ESM-m2: splits validated with the minimums adapt/evaluate apply; a new dataset drops any earlier head;
+    # BYOD has a path field and is written under its own name
+    "split_manifests = validate_splits(splits, CLASSES)",
+    "pipe.reset_adaptation()",
+    "BYOD_PATH = ''",
+    "dataset_csv = 'outputs/esm2_protein_sample_dataset.csv'",
+    "dataset_csv = 'outputs/esm2_protein_byod_dataset.csv'",
+    "write_dataset_csv(records, dataset_csv)",
     # Stage 5: embeddings with ids
     "embedding_result = pipe.embed([r['sequence'] for r in embed_records], names=[r['id'] for r in embed_records])",
     "writer.writerow(['id', 'label'] + [f'dim_{k}' for k in range(embedding_result['dimension'])])",
     # Stage 6: baselines fitted on train only
     "baseline_majority = majority_baseline(train_records, test_records, CLASSES)",
     "baseline_composition = composition_baseline(train_records, test_records, CLASSES)",
+    # ESM-M2: an order-blind 20-residue composition baseline and the order-aware rule that defines the classes
+    "residue_composition_baseline(train_records, test_records, CLASSES)",
+    "baselines['longest_hydrophobic_run'] = longest_run_baseline(train_records, test_records, CLASSES)",
+    "'delta_vs_baselines': {name: round(test_metrics['accuracy'] - b['accuracy'], 4) for name, b in baselines.items()}",
+    # ESM-m1: one row per Section 7 run; every export of a run describes one model
+    "run_history = globals().get('run_history', [])",
+    "assert evaluation_report['adaptation']['trainable_layers'] == artifact_manifest['adaptation']['trainable_layers'] == TRAINABLE_LAYERS",
     # Stage 7: bounded fine-tuning with explicit hyperparameters
     "adapt_result = pipe.adapt(",
     "trainable_layers=TRAINABLE_LAYERS",
@@ -81,6 +95,35 @@ CODE_MARKERS = (
     "safetensors.__version__",
     "'device': pipe.device",
 )
+# Learner-facing text the review fixes removed; it must not come back (ESM-M1 restart-dependent install,
+# ESM-M2 the equal-composition and pretraining claims, ESM-m1 the fixed EPOCHS = 1 outcome).
+STALE_MARKDOWN = (
+    "share their residue composition",
+    "share their composition",
+    "pretrained to represent",
+    "A residue-counting baseline cannot separate the classes",
+    "accuracy sits near",
+    "Restart the runtime, then rerun",
+    "installs the pinned dependencies",
+    "re-run from that cell",
+)
+# The guided layer (NOTEBOOK_SPEC 2.2 §3.5, GDL1-GDL14; review ESM-M4): each marker with its minimum count.
+GUIDED_MARKERS = (
+    ("**Who this is for.**", 1),
+    ("**Input → Model → Output.**", 1),
+    ("**How to use this notebook.**", 1),
+    ("**Roadmap:**", 1),
+    ("**Predict before running:**", 8),
+    ("**What to notice:**", 8),
+    ("<summary>Check your reasoning</summary>", 9),
+    ("## 12. Your turn — change one thing", 1),
+    ("**Predict → Change one thing → Run → Observe → Explain.**", 1),
+    ("## Troubleshooting", 1),
+    ("## Glossary", 1),
+    ("## Conclusion (your notes)", 1),
+    ("> **Infrastructure.**", 3),
+    ("**Next experiments**", 1),
+)
 # Profile-specific learner-facing statements.
 MARKDOWN_MARKERS = (
     "**Capability:** protein sequence embeddings and bounded sequence-classification fine-tuning on labelled protein sequences",
@@ -89,6 +132,9 @@ MARKDOWN_MARKERS = (
     "Embeddings are representations",
     "residue-level (token) classification, contact or structure prediction",
     "homology-aware splits",
+    # ESM-M2: what the run does and does not show
+    "it does **not** show what ESM-2's pretraining contributes",
+    "the one-line rule",
 )
 # Direct-library use that must stay inside the carried module cells (G2: the notebook calls the
 # pipeline API, it does not reimplement it). Checked on every code cell except the embedded ones.
@@ -111,10 +157,10 @@ FORBIDDEN_OUTSIDE_MODULE = (
 # ---------------------------------------------------------------------------
 # Shared checks. Everything below is source/structure validation only. Passing
 # these checks is NOT clean-runtime execution evidence under DIMER Notebook
-# Specification 2.0; see docs/release-verification.md for the release gate.
+# Specification 2.2; see docs/release-verification.md for the release gate.
 # ---------------------------------------------------------------------------
 
-NOTEBOOK_SPEC = "2.0"
+NOTEBOOK_SPEC = "2.2"
 ALLOWED_PROFILES = {"E2E", "ARTIFACT-INFERENCE", "TASK-INFERENCE", "MULTI-CAPABILITY", "SMOKE"}
 STATUS_TOKENS = ("Candidate", "Release-grade")
 PLACEHOLDER = re.compile(r"\b(TODO|TBD|FIXME)\b|Insert text here|Tooltip:", re.I)
@@ -535,8 +581,13 @@ def _validate_embedded_modules(path: Path, notebook: dict, build) -> list[int]:
             cell["metadata"]["dimer"].get("module_sha256") == context["per_module_sha256"][rel],
             f"{path.name}: cell {index} module_sha256 tag does not match {rel}",
         )
+        # ESM-M4: a carried cell is the module plus the generator's one Infrastructure title line, collapsed.
         _check(
-            _cell_source(cell).rstrip("\n") + "\n" == context["embedded"][module],
+            _cell_source(cell).startswith(build.CARRIED_TITLE_PREFIX) and cell.get("metadata", {}).get("cellView") == "form",
+            f"{path.name}: carried module cell {index} must start with the generator's Infrastructure title and be collapsed (cellView: form)",
+        )
+        _check(
+            build.strip_carried_title(_cell_source(cell)).rstrip("\n") + "\n" == context["embedded"][module],
             f"{path.name}: embedded module cell {index} differs from {rel} (PAR1); regenerate the notebook",
         )
     return [index for index, _ in tagged]
@@ -603,8 +654,21 @@ def _validate_notebook_content(
     _check(not missing, f"{path.name}: missing required source markers: {missing}")
     present = [label for label, pattern in FORBIDDEN_PATTERNS if pattern.search(code)]
     _check(not present, f"{path.name}: forbidden/insecure source: {present}")
-    leaked = [marker for marker in FORBIDDEN_OUTSIDE_MODULE if marker in outside]
+    # The two kernel cells (ESM-M1) download the pinned uv wheel themselves; every learner cell is still checked.
+    kernel_cells = {index for index, source, _tree in code_cells if "# dimer: kernel cell" in source}
+    learner = "\n".join(text for index, text in stripped.items() if index not in embedded and index not in kernel_cells)
+    leaked = [marker for marker in FORBIDDEN_OUTSIDE_MODULE if marker in learner]
     _check(not leaked, f"{path.name}: direct library use outside the carried module cell (G2): {leaked}")
+    # ESM-M1: exactly two kernel cells (the isolated install and the router); everything else runs in the uv environment.
+    kernel_raw = [source for _index, source, _tree in code_cells if "# dimer: kernel cell" in source]
+    _check(len(kernel_raw) == 2, f"{path.name}: exactly two kernel cells (isolated install and router) are expected (ESM-M1)")
+    install = next((k for k in kernel_raw if "LOCK_TEXT = r" in k), "")
+    for needed in ('"--managed-python"', '"--require-hashes"', '"--only-binary"', '":all:"', "UV_SHA256", "LOCK_SHA256", 'platform.machine() != "x86_64"'):
+        _check(needed in install, f"{path.name}: the isolated install cell must use {needed} (ESM-M1)")
+    _check("_ip.input_transformers_cleanup.append(_route_to_isolated_runtime)" in "\n".join(kernel_raw), f"{path.name}: later cells must be routed to the isolated environment (ESM-M1)")
+    _check("module.__spec__ = importlib.machinery.ModuleSpec(name, None, is_package=package)" in "\n".join(kernel_raw), f"{path.name}: the worker's google.colab stubs must carry a module spec")
+    titled = sum(1 for _index, source, _tree in code_cells if source.startswith("# @title Infrastructure:"))
+    _check(titled == 7, f"{path.name}: install, router, runtime, three carried-module and model cells must carry an Infrastructure title (ESM-M4), found {titled}")
     _check(
         f"pipe = {MODEL_LOAD_EXPR}" in outside,
         f"{path.name}: must load through {MODEL_LOAD_EXPR} (INF1)",
@@ -615,6 +679,11 @@ def _validate_notebook_content(
         _check(filename in code, f"{path.name}: must export {filename}")
     missing_md = [marker for marker in COMMON_MARKDOWN_MARKERS + MARKDOWN_MARKERS if marker not in markdown]
     _check(not missing_md, f"{path.name}: missing learner-facing markers: {missing_md}")
+    stale = [marker for marker in STALE_MARKDOWN if marker in markdown]
+    _check(not stale, f"{path.name}: stale learner-facing text: {stale}")
+    _check("{{" not in markdown and "}}" not in markdown, f"{path.name}: markdown must not show doubled braces")
+    short = [(marker, markdown.count(marker), least) for marker, least in GUIDED_MARKERS if markdown.count(marker) < max(least, 1)]
+    _check(not short, f"{path.name}: guided layer incomplete (marker, found, needed): {short}")
     _check(f"**Profile:** `{EXPECTED_PROFILE}`" in markdown, f"{path.name}: markdown must state the profile")
     _check(f"https://huggingface.co/{model_id}" in markdown, f"{path.name}: references must link {model_id}")
 

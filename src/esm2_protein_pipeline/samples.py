@@ -1,11 +1,15 @@
 """Deterministic in-code sample data and the labelled-dataset contract for ESM-2 sequence classification.
 
-The tutorial task is synthetic and deliberately order-sensitive: every sequence carries the same
-number of strongly hydrophobic residues, but in class `segment` they form one contiguous stretch
-(18-22 residues, the length range of a membrane-spanning helix) and in class `scattered` they are
-spread out so that no hydrophobic run is longer than 5. A model that only counts residues cannot
-separate the classes; a model that reads the sequence can. This is sanity evidence for the
-fine-tuning contract, not a biological benchmark (NOTEBOOK_SPEC 2.0 DAT8).
+The tutorial task is synthetic and defined by a residue-order rule: each `scattered` record has the
+length and the strongly hydrophobic residue count of one `segment` record, but in class `segment` the
+hydrophobic residues form one contiguous stretch (18-22 residues, the length range of a
+membrane-spanning helix) and in class `scattered` they are spread out so that no hydrophobic run is
+longer than 5. Only the hydrophobic count is matched: the other residues are drawn differently
+(`segment` from UniProt-weighted background frequencies, `scattered` uniformly from the polar
+residues), so the full 20-residue composition differs between the classes, and the one-line rule
+`longest_hydrophobic_run >= 18` separates them perfectly. This is sanity evidence for the fine-tuning
+contract, not a biological benchmark and not evidence of what pretraining contributes (NOTEBOOK_SPEC
+2.2 DAT8; review ESM-M2).
 """
 
 from __future__ import annotations
@@ -28,6 +32,11 @@ MIN_RECORDS = 12
 MAX_RECORDS = 5_000
 MAX_CLASSES = 20
 MIN_RECORDS_PER_CLASS = 3
+# A split only has to hold every class once: `split_dataset` guarantees that for any dataset that passes
+# `validate_dataset` (>= 3 records per class), and `adapt`/`evaluate` validate splits with these minimums
+# (review ESM-M3: they used to re-apply the 12-record dataset minimum to each split).
+MIN_SPLIT_RECORDS_PER_CLASS = 1
+SPLIT_NAMES = ("train", "validation", "test")
 MAX_ID_CHARS = 64
 MAX_LABEL_CHARS = 64
 REQUIRED_COLUMNS = ("id", "sequence", "label")
@@ -109,8 +118,9 @@ def _make_scattered(rng: random.Random, n_hydrophobic: int, length: int) -> str:
 def generate_sample_dataset(seed: int = SAMPLE_SEED, size: int = SAMPLE_SIZE) -> list[dict[str, Any]]:
     """`size` labelled records (half `segment`, half `scattered`), deterministic for a given seed.
 
-    Each `scattered` record mirrors one `segment` record's length and hydrophobic residue count,
-    so the two classes have identical composition statistics by construction.
+    Each `scattered` record mirrors one `segment` record's length and hydrophobic residue count, so
+    the hydrophobic fraction is equal within every pair. The remaining residues are drawn from
+    different distributions (see the module docstring), so the full composition is not equal.
     """
     if size < 2 or size % 2:
         raise ValueError("size must be an even number >= 2 (one scattered record per segment record)")
@@ -247,13 +257,46 @@ def split_dataset(
         n_val = max(1, round(len(rows) * val_fraction))
         n_test = max(1, round(len(rows) * test_fraction))
         if len(rows) - n_val - n_test < 1:
-            raise ValueError(f"class {cls!r} has {len(rows)} records; too few to leave one per split")
+            raise ValueError(
+                f"class {cls!r} has {len(rows)} records; with val_fraction={val_fraction} and "
+                f"test_fraction={test_fraction} it needs at least {n_val + n_test + 1} to leave one per split"
+            )
         out["validation"].extend(rows[:n_val])
         out["test"].extend(rows[n_val : n_val + n_test])
         out["train"].extend(rows[n_val + n_test :])
     for part in out.values():
         rng.shuffle(part)
     return out
+
+
+def validate_splits(
+    splits: Mapping[str, Sequence[Mapping[str, Any]]],
+    classes: Sequence[str] | None = None,
+) -> dict[str, dict[str, Any]]:
+    """Validate each split with the minimums `adapt` and `evaluate` apply; return one manifest per split.
+
+    Every split must hold every class at least `MIN_SPLIT_RECORDS_PER_CLASS` times, with labels drawn
+    from the training split's classes (or `classes`). A refusal names the split (review ESM-M3).
+    """
+    missing = [name for name in SPLIT_NAMES if name not in splits]
+    if missing:
+        raise ValueError(f"splits {missing} are missing; expected {list(SPLIT_NAMES)}")
+    manifests: dict[str, dict[str, Any]] = {}
+    class_list = list(classes) if classes is not None else None
+    for name in SPLIT_NAMES:
+        try:
+            manifest = validate_dataset(
+                splits[name],
+                classes=class_list,
+                min_records=MIN_SPLIT_RECORDS_PER_CLASS,
+                min_per_class=MIN_SPLIT_RECORDS_PER_CLASS,
+            )
+        except (TypeError, ValueError) as exc:
+            raise type(exc)(f"{name} split: {exc}") from exc
+        if class_list is None:
+            class_list = manifest["classes"]
+        manifests[name] = manifest
+    return manifests
 
 
 def load_byod_dataset(source: str | Path) -> list[dict[str, Any]]:
@@ -265,7 +308,13 @@ def load_byod_dataset(source: str | Path) -> list[dict[str, Any]]:
     path = Path(source)
     if not path.is_file():
         raise FileNotFoundError(f"BYOD dataset file not found: {path}")
-    text = path.read_text(encoding="utf-8-sig")
+    try:
+        text = path.read_text(encoding="utf-8-sig")
+    except UnicodeDecodeError as exc:
+        raise ValueError(
+            f"{path.name} is not UTF-8 text ({exc.reason} at byte {exc.start}); save it as UTF-8 "
+            "(in a spreadsheet: 'CSV UTF-8') and try again"
+        ) from exc
     if not text.strip():
         raise ValueError(f"BYOD dataset file is empty: {path}")
     suffix = path.suffix.lower()
