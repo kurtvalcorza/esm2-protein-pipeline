@@ -132,6 +132,35 @@ general estimates.
 | 2026-09-18 | `22df052` / `638ec73e83d6` | Kaggle batch kernel `dimer-nb2-esm2-protein` v1 (Python 3.12.13, Tesla T4, clean cache) | Default sample path (download and verify 6 model files → validate → split → embed → baselines → adapt → evaluate → classify → export → reload) | 243.7 s | **Passed only after a manual restart** — not a one-pass Run all, not promotion evidence. 13/13 code cells after one fresh-process restart following the in-kernel install; test accuracy/macro-F1/AUROC 1.0 (n=20) against majority accuracy 0.5; reload parity 0.0. |
 | 2026-09-18 | `ae499e1` / `638ec73e83d6` | Local pre-flight harness (Windows, CPython 3.12, CPU float32) | Default sample path (validate → split → embed → baselines → adapt → evaluate → classify → export → reload) | 92.9 s | **PASSED** — pre-flight; hosted clean-runtime run still required |
 | 2026-10-04 | review-fix branch (revised notebook, before commit) | Local pre-flight harness (Windows, CPython 3.12, CPU float32, torch 2.14.0+cpu, `DIMER_NOTEBOOK_CI_PREINSTALLED=1`, snapshot pre-staged, `CUDA_VISIBLE_DEVICES=-1`) | Default path (16/16 code cells; learner cells 55.4 s); Section 12 activity (`TRAINABLE_LAYERS = 0`, Run after from Section 7: 6/6 cells, test 0.90 / AUROC 1.0, every export `trainable_layers: 0`); BYOD via `BYOD_PATH`: 30-record 3-class JSONL (splits 18/6/6) and 12-record binary CSV (8/2/2), both through export and reload (parity 0.0); refusals: cancelled upload and UTF-16 CSV with one-line messages, and after a refusal evaluation and export refuse (no head) | 334.9 s (all journeys) | **PASSED** — pre-flight only, **not** promotion evidence; the isolated-environment install path (Linux) was not exercised |
+| 2026-10-04 | `37f7112` / `c8b7a65eab9b` | Colab CLI 0.7.4 sequential execution, fresh Colab VM, Tesla T4 (kernel Python 3.13.15; isolated Python 3.12.12, torch 2.14.0+cu130, transformers 4.57.6, safetensors 0.8.0, `cuda: True`; empty Hugging Face cache, no repository checkout) — not a browser Run all | Default settings only (download and verify 6 model files → validate → split → embed → baselines → adapt → evaluate → classify → export → reload) | 98.2 s (session wall time, including the 49 s environment build) | **PASSED — one pass, no restart, 0 errors.** 16/16 code cells in order (see the record below) |
+
+### 2026-10-04 Colab CLI T4 run of `37f7112` (blob `c8b7a65eab9b`)
+
+- **Executor:** Google Colab CLI 0.7.4 (`colab exec -f`) on a fresh Colab VM with a Tesla T4. The CLI executes every
+  code cell in order in one kernel; it is **not** a browser Run all, it records no execution counts (order is taken
+  from the `Executing cell k/16` lines in the log), and it renders no forms.
+- **Source identity:** the notebook was fetched from `raw.githubusercontent.com` at the full commit
+  `37f7112b75fa0e2b5dd0fc470ea0d100e21b008b`; its Git blob `c8b7a65eab9b91438e91f48054f1a77bbceb55ed` was checked
+  before the VM was allocated, and the executed notebook's 16 code-cell sources equal the committed ones.
+- **Outcome:** 16/16 code cells, one pass, **no restart** (`restarted: false`), 0 error outputs, no output asks for a
+  restart. Cells 4–6 (the carried `pipeline`, `samples` and `metrics` modules) print nothing by design.
+- **Runtime (cells 1–3):** isolated environment `/content/dimer_isolated_env`, Python 3.12.12, 47 locked packages,
+  built in 49 s; every later cell routed to it; `NOTEBOOK_SOURCE.repository_revision` `23be8f5` equals
+  `metadata.dimer.generated_from`.
+- **Model (cell 7):** `facebook/esm2_t30_150M_UR50D` at `a695f6045e2e32885fa60af20c13cb35398ce30c` (MIT), 6 files
+  (595,260,503 bytes) fetched and 6 verified; device `cuda:0`.
+- **Observed metrics** (observations, not a benchmark; all equal to the worked answers quoted from the local CPU
+  check): 96 records, 48/48, splits 56/20/20; embedding cosine within 0.961 / between 0.9434; test baselines majority
+  0.5 (macro-F1 0.3333), composition centroid 0.75 (AUROC 0.8), hydrophobic fraction 0.45 (AUROC 0.47), longest
+  hydrophobic run 1.0; 10,259,842 of 148,140,123 parameters trained (4.8 s), validation accuracy 0.85 → 1.0 → 1.0 →
+  1.0; test accuracy, macro-F1 and AUROC 1.0 (n = 20); 6/6 new sequences correct (scores 0.572–0.8462); adapter
+  reload parity PASS, maximum score difference 0.0; seven files under `outputs/`.
+- **Evidence files** (`docs/execution-evidence/2026-10-04/`, byte-exact copies):
+  - `esm2_protein_colab_37f7112_colab-cli-t4.ipynb` — SHA-256 `7001b067cde61263a74c928e709d1cfe13f7dcfe360122f3f7004e982f12b49b`
+  - `esm2_protein_colab_37f7112_colab-cli-t4_exec.log` — SHA-256 `7c8c36046e5375826e16c52bce950bad4e456b99de48b5dc3e9eb18996015813`
+  - `esm2_protein_colab_37f7112_colab-cli-t4_run_summary.json` — SHA-256 `4ef640738f75e760e8d38cb0078f6ca9992943a3a94b18e5e25998b13c1604ac`
+- **Not exercised:** a browser Run all, the BYOD gate (REL12, step 6) and its refusals, and the Section 12 activity
+  (`TRAINABLE_LAYERS = 0`; its worked answer of test 0.90 / AUROC 1.0 comes from the local CPU check only).
 
 ## Current status
 
@@ -140,5 +169,7 @@ manual restart following the in-kernel install; under NOTEBOOK_SPEC 2.2 (RUN1, R
 so the Notebook Review Framework v1 review (2026-10-03, ESM-M1) returned the repository to Candidate. The revised
 notebook builds an isolated, hash-locked environment instead (Linux x86_64 only), and also fixes the review's
 baseline (ESM-M2), BYOD (ESM-M3, ESM-m2), guided-layer (ESM-M4) and activity (ESM-m1) findings. Its local CPU
-pre-flight (below) is not promotion evidence. Promotion needs a one-pass hosted Run all of the current blob with
-`restarted: false`, the BYOD gate of step 6 (REL12), and the maintainer's approval.
+pre-flight (above) is not promotion evidence. On 2026-10-04 the current blob `c8b7a65eab9b` (commit `37f7112`)
+completed one pass with no restart and 0 errors on a fresh Colab Tesla T4 under the Colab CLI (16/16 code cells,
+recorded above). That run is sequential CLI execution, not a browser Run all. Status stays **Candidate**: promotion
+still needs the BYOD gate of step 6 (REL12) and the maintainer's approval.
