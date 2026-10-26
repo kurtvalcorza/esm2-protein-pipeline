@@ -62,6 +62,7 @@ BADGES = [
 _DATA_CODE = _py(
     """import json
 import os
+import shutil
 from pathlib import Path
 
 USE_BYOD = False  # @param {type:"boolean"}
@@ -70,36 +71,98 @@ VAL_FRACTION = 0.2  # @param {type:"number"}
 TEST_FRACTION = 0.2  # @param {type:"number"}
 SEED = 42  # @param {type:"integer"}
 
+class BYODRefusal(ValueError):
+    \"\"\"A refused BYOD input: ``BYODRefusal(file_name, reason_and_fix)``.\"\"\"
+
+    dimer_refusal = True
+
+    def __init__(self, file_name, reason):
+        super().__init__(f"{file_name}: {reason}")
+        self.file_name = file_name
+        self.reason = reason
+
+    def _render_traceback_(self):
+        return [f"Refused: {self}"]
+
+
+# What an earlier run of Sections 4-8 left in this session. A refused input removes these results and the
+# outputs/ files below (DAT20), so nothing from that run can pass as a result of the refused file.
+RUN_RESULT_NAMES = (
+    'byod_path', 'file_name', 'uploaded', 'payload', 'records', 'data_source', 'dataset_csv', 'dataset_manifest',
+    'splits', 'split_manifests', 'train_records', 'val_records', 'test_records', 'example', 'embed_records',
+    'embedding_result', 'vectors', 'within', 'between', 'sim', 'writer', 'vec', 'baseline_majority', 'baselines',
+    'baseline_composition', 'started', 'adapt_result', 'adapt_seconds', 'step', 'val_metrics', 'test_metrics',
+    'cls_name', 'row', 'comparison', 'evaluation_report', 'run_history', 'new_records', 'new_source',
+    'input_manifest', 'inference_result', 'predictions', 'n_match', 'artifact_dir', 'artifact_manifest',
+    'reloaded_pipe', 'reloaded_result', 'max_score_diff', 'after', 'result_payload', 'path', 'columns', 'CLASSES',
+)
+RUN_OUTPUTS = (
+    'outputs/@STEM@_*',
+)
+
+
+def refuse_byod(file_name, reason):
+    \"\"\"Remove the earlier run's results and outputs/ files, then stop the cell with one Refused: line naming the file and the fix.\"\"\"
+    for name in RUN_RESULT_NAMES:
+        globals().pop(name, None)
+    for pattern in RUN_OUTPUTS:
+        for path in Path('.').glob(pattern):
+            if path.is_dir():
+                shutil.rmtree(path, ignore_errors=True)
+            else:
+                path.unlink()
+    reason = str(reason).rstrip('. ')
+    if 'again' not in reason:
+        reason += '; fix the file, then run this cell and every cell after it again'
+    raise BYODRefusal(file_name, reason + ' (the earlier results of this session and their outputs/ files were removed).') from None
+
+
 os.makedirs('outputs', exist_ok=True)
 # A new dataset needs a new head: drop any head an earlier run trained, so no later cell can evaluate,
 # classify or export it under this dataset's name.
 pipe.reset_adaptation()
-if USE_BYOD:
-    if BYOD_PATH:
-        byod_path = Path(BYOD_PATH)
-        file_name = byod_path.name
+# DAT20: with USE_BYOD, every problem with your file (path, upload, format, records, classes, split) stops here as
+# one Refused: line. The built-in sample keeps its traceback: a failure there is not your input.
+byod_name = (Path(BYOD_PATH.strip()).name or BYOD_PATH.strip()) if BYOD_PATH.strip() else '(no file)'
+try:
+    if USE_BYOD:
+        if BYOD_PATH:
+            byod_path = Path(BYOD_PATH)
+            file_name = byod_path.name
+            if not byod_path.is_file():
+                raise BYODRefusal(byod_name, f'BYOD_PATH {BYOD_PATH!r} does not exist or is not a file: set it to one .csv, .json or .jsonl file and run this cell again')
+        else:
+            try:
+                from google.colab import files
+            except ImportError:
+                raise BYODRefusal('(no file)', 'there is no upload dialog outside Google Colab: set BYOD_PATH to your .csv, .json or .jsonl file and run this cell again') from None
+            uploaded = files.upload()
+            if len(uploaded) != 1:
+                raise BYODRefusal(', '.join(sorted(uploaded)) or '(no file)', f'upload exactly one .csv, .json or .jsonl file (got {len(uploaded)}; an empty or cancelled upload gives 0) and run this cell again, or set BYOD_PATH to the file')
+            file_name, payload = next(iter(uploaded.items()))
+            byod_name = file_name
+            byod_path = Path('work') / file_name
+            byod_path.parent.mkdir(parents=True, exist_ok=True)
+            byod_path.write_bytes(payload)
+        records = load_byod_dataset(byod_path)
+        data_source = 'BYOD (' + file_name + ')'
+        dataset_csv = 'outputs/@STEM@_byod_dataset.csv'
     else:
-        from google.colab import files
-        uploaded = files.upload()
-        if len(uploaded) != 1:
-            raise ValueError(f'Upload exactly one .csv, .json or .jsonl file (got {len(uploaded)}; an empty or cancelled upload gives 0). Outside Colab, set BYOD_PATH to the file instead.')
-        file_name, payload = next(iter(uploaded.items()))
-        byod_path = Path('work') / file_name
-        byod_path.parent.mkdir(parents=True, exist_ok=True)
-        byod_path.write_bytes(payload)
-    records = load_byod_dataset(byod_path)
-    data_source = 'BYOD (' + file_name + ')'
-    dataset_csv = 'outputs/@STEM@_byod_dataset.csv'
-else:
-    records = generate_sample_dataset()
-    data_source = f'synthetic hydrophobic-segment dataset (seed {SAMPLE_SEED}, {SAMPLE_SIZE} records)'
-    dataset_csv = 'outputs/@STEM@_sample_dataset.csv'
+        records = generate_sample_dataset()
+        data_source = f'synthetic hydrophobic-segment dataset (seed {SAMPLE_SEED}, {SAMPLE_SIZE} records)'
+        dataset_csv = 'outputs/@STEM@_sample_dataset.csv'
 
-dataset_manifest = validate_dataset(records)
-CLASSES = dataset_manifest['classes']
-splits = split_dataset(records, val_fraction=VAL_FRACTION, test_fraction=TEST_FRACTION, seed=SEED)
-# Every split must hold every class at least once: the minimum adapt and evaluate apply. A refusal names the split.
-split_manifests = validate_splits(splits, CLASSES)
+    dataset_manifest = validate_dataset(records)
+    CLASSES = dataset_manifest['classes']
+    splits = split_dataset(records, val_fraction=VAL_FRACTION, test_fraction=TEST_FRACTION, seed=SEED)
+    # Every split must hold every class at least once: the minimum adapt and evaluate apply. A refusal names the split.
+    split_manifests = validate_splits(splits, CLASSES)
+except BYODRefusal as exc:
+    refuse_byod(exc.file_name, exc.reason)
+except (TypeError, ValueError, OSError) as exc:
+    if not USE_BYOD:
+        raise
+    refuse_byod(byod_name, f'{type(exc).__name__}: {exc}')
 train_records, val_records, test_records = splits['train'], splits['validation'], splits['test']
 write_dataset_csv(records, dataset_csv)
 
@@ -656,7 +719,7 @@ TEMPLATE = {
         "again; on a small CPU runtime lower `BATCH_SIZE` in Section 7.\n"
         "- **Section 3 reports a size or SHA-256 mismatch.** A snapshot file was altered or truncated; delete "
         "`weights/esm2-t30-150m-ur50d/model.safetensors` and run Section 3 again.\n"
-        "- **Section 4: \"Upload exactly one … file (got 0)\".** The upload was cancelled or empty. Run Section 4 again and pick one file, "
+        "- **Section 4: \"Refused: (no file): upload exactly one … file (got 0 …)\".** The upload was cancelled or empty. Run Section 4 again and pick one file, "
         "or set `BYOD_PATH`.\n"
         "- **Section 4: \"… is not UTF-8 text\".** Save the file as UTF-8 (a spreadsheet's 'CSV UTF-8') and run Section 4 again.\n"
         "- **Section 4 refuses a BYOD dataset.** The message names the record and the rule (alphabet, length, duplicate id or sequence, "

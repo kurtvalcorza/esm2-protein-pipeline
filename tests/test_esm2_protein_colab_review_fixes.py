@@ -309,7 +309,7 @@ def test_cancelled_upload_and_utf16_file_get_actionable_messages(nb: dict, tmp_p
     monkeypatch.setitem(sys.modules, "google.colab", colab)
     monkeypatch.setitem(sys.modules, "google.colab.files", files)
     ns = _section4_namespace(_stub_classifier_pipe(["a", "b"]))
-    with pytest.raises(ValueError, match=r"Upload exactly one \.csv, \.json or \.jsonl file \(got 0"):
+    with pytest.raises(ValueError, match=r"^\(no file\): upload exactly one \.csv, \.json or \.jsonl file \(got 0"):
         _run_section4(nb, ns, use_byod=True)
     utf16 = tmp_path / "export.csv"
     records = generate_sample_dataset(size=24)
