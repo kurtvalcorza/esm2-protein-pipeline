@@ -169,7 +169,9 @@ manual restart following the in-kernel install; under NOTEBOOK_SPEC 2.2 (RUN1, R
 so the Notebook Review Framework v1 review (2026-10-03, ESM-M1) returned the repository to Candidate. The revised
 notebook builds an isolated, hash-locked environment instead (Linux x86_64 only), and also fixes the review's
 baseline (ESM-M2), BYOD (ESM-M3, ESM-m2), guided-layer (ESM-M4) and activity (ESM-m1) findings. Its local CPU
-pre-flight (above) is not promotion evidence. On 2026-10-04 the current blob `c8b7a65eab9b` (commit `37f7112`)
+pre-flight (above) is not promotion evidence. On 2026-10-04 blob `c8b7a65eab9b` (commit `37f7112`)
 completed one pass with no restart and 0 errors on a fresh Colab Tesla T4 under the Colab CLI (16/16 code cells,
 recorded above). That run is sequential CLI execution, not a browser Run all. Status stays **Candidate**: promotion
 still needs the BYOD gate of step 6 (REL12) and the maintainer's approval.
+
+The current blob `8957ea6a` (code commit `d9dc7f3`) shows a refused BYOD input as one `Refused: <file>: <reason>` line with no traceback, removes the earlier run's results and `outputs/` files and stops Run all at that cell, while genuine failures keep their traceback (NOTEBOOK_SPEC DAT19/DAT20); its hosted Colab T4 runs (the default path and a scripted refusal, `USE_BYOD=True;BYOD_PATH='/content/sample_data/california_housing_test.csv'`) are pending, and the hosted runs of earlier blobs, including `c8b7a65eab9b`, are history for it (REL14).
