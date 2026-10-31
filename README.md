@@ -57,7 +57,7 @@ Tests are offline: injected backends and temporary manifests, never the weights.
 
 ## Release status
 
-**Candidate.** The notebook was revised after its Notebook Review Framework v1 review (isolated runtime, honest baselines, BYOD split contract, guided layer); no hosted run of the revised notebook is recorded yet. The previous blob's 2026-09-18 Kaggle Tesla T4 run passed only after a manual restart, which is not a one-pass Run all and not promotion evidence. The execution records and the promotion gate are in `docs/release-verification.md`.
+**Candidate.** The notebook was revised after its Notebook Review Framework v1 review (isolated runtime, honest baselines, BYOD split contract, guided layer); its blob `c8b7a65eab9b` passed one hosted Colab T4 run on 2026-10-04 (history, REL14), and the current blob `8957ea6a` (DAT20 refusal display) passed its default path and a scripted DAT20 refusal on a hosted Colab T4 on 2026-10-29; the remaining gates are REL12 and REL2. The previous blob's 2026-09-18 Kaggle Tesla T4 run passed only after a manual restart, which is not a one-pass Run all and not promotion evidence. The execution records and the promotion gate are in `docs/release-verification.md`.
 
 ## Licensing
 
