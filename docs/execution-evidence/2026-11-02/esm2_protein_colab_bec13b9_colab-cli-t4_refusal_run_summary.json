@@ -1,0 +1,72 @@
+{
+  "repo": "esm2-protein-pipeline",
+  "sha": "bec13b9a70f8698de56312c6a02f49229a7d06b3",
+  "notebook": "tutorials/esm2_protein_colab.ipynb",
+  "blob": "2bd0a8dff603cbcf874a3ebbb5ba124f59c83c07",
+  "gpu": "T4",
+  "session": "suite-esm2-bec13b9-4cf7",
+  "started_utc": "2026-11-02T18:49:13+00:00",
+  "runner": "Colab CLI `colab exec -f` on a fresh session (not a browser Run all)",
+  "overrides": [
+    {
+      "name": "USE_BYOD",
+      "from": "False",
+      "to": "True"
+    },
+    {
+      "name": "BYOD_PATH",
+      "from": "''",
+      "to": "'/content/sample_data/california_housing_test.csv'"
+    }
+  ],
+  "run_copy_blob": "29600ae5fd02df571c6a7b06b04b1d93824ec76b",
+  "run_copy_sha256": "4c6b56c33b21bed689ce25f791b131dcd435dbd1a32fc1b8812d6e90209c7db5",
+  "run_copy_note": "refusal run: the run copy is the committed notebook with the listed assignment overrides, cut immediately after the refusal cell and re-serialised (nbformat layout); input_unchanged compares against that copy",
+  "truncated_after_cell": "esm2_protein-17",
+  "refusal_cell_ref": "esm2_protein-17",
+  "refusal_cell_index": 8,
+  "cells_dropped": 17,
+  "code_cells_dropped": 8,
+  "original_sha256": "04bd359d9a58e8f629d8c1f9b9191874b3169544970ea656feadb198b3436b19",
+  "status": "[suite-esm2-bec13b9-4cf7] gpu-t4-s-ass1c1-44g3bijehm2r | Hardware: T4 | Shape: Standard | Variant: GPU | Status: IDLE",
+  "exec_exit_code": 0,
+  "stopped": true,
+  "stop_verified": true,
+  "wall_s": 106.4,
+  "input_unchanged": true,
+  "executed_file": "esm2_protein_colab_bec13b9_colab-cli-t4_output.ipynb",
+  "log_cells": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+  ],
+  "log_total": 8,
+  "code_cells": 8,
+  "executed_cells": 5,
+  "errors": [
+    {
+      "cell": "esm2_protein-17",
+      "ename": "IsolatedCellRefusal",
+      "evalue": "california_housing_test.csv: ValueError: CSV header ['longitude', 'latitude', 'housing_median_age', 'total_rooms', 'total_bedrooms', 'population', 'households', 'median_income', 'median_house_value'] is missing required column(s) ['id', 'sequence', 'label']; fix the file, then run this cell and ever"
+    }
+  ],
+  "execution_counts": [],
+  "sequential": null,
+  "executed_sha256": "5cfbe1597f6793a89d2f1829c7f750841537a1c90893db39aa40d9f045709c17",
+  "log_sequential_complete": true,
+  "mode": "expect_refusal",
+  "refusal_line": "Refused: california_housing_test.csv: ValueError: CSV header ['longitude', 'latitude', 'housing_median_age', 'total_rooms', 'total_bedrooms', 'population', 'households', 'median_income', 'median_house_value'] is missing required column(s) ['id', 'sequence', 'label']; fix the file, then run this cell and every cell after it again (the earlier results of this session and their outputs/ files were removed).",
+  "halting_cell_index": 8,
+  "halting_cell_id": "esm2_protein-17",
+  "error_cells": [
+    8
+  ],
+  "refusal_fail_reasons": [],
+  "refusal_ok": true,
+  "verdict": "PASS"
+}
