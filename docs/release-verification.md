@@ -206,16 +206,62 @@ This run says nothing about the 17 cut cells, which did not run in it. Session `
 
 Not exercised by these runs: an accepted BYOD input (REL12) and a browser `Run all` of the interactive journeys (REL2).
 
+### Hosted Colab T4 runs of blob `2bd0a8df` (2026-11-02)
+
+These runs executed `main` at `bec13b9a70f8698de56312c6a02f49229a7d06b3`, notebook `tutorials/esm2_protein_colab.ipynb` blob `2bd0a8dff603cbcf874a3ebbb5ba124f59c83c07`, fetched at the 40-character SHA and Git-blob verified, with the Colab CLI (`colab exec -f`) on a fresh Colab Tesla T4 session: sequential CLI execution, not a browser `Run all` (the Colab CLI version is not recorded in `exec.log` or `run_summary.json`). Each `run_summary.json` records `verdict` `PASS`, `exec_exit_code` 0, `input_unchanged` true and `stop_verified` true (the VM was released), and the SHA-256 of each executed notebook equals the summary's `executed_sha256`.
+
+**One pass, no restart, 0 errors** (default path, 2026-11-02 18:46:01 UTC start). Default settings, no overrides; session `suite-esm2-bec13b9-4cf7`; wall 110 s (`wall_s`); `code_cells` 16, all logged in order by `exec.log` (`executed_cells` 13: the cells that printed output); 0 errors. Retained evidence: [`execution-evidence/2026-11-02/`](execution-evidence/2026-11-02/).
+
+Printed by the default run (verbatim lines from the executed outputs):
+
+```text
+{'verified_files': 6, 'revision': 'a695f6045e2e32885fa60af20c13cb35398ce30c'}
+{'test_split': 'fine_tuned', 'accuracy': 1.0, 'macro_f1': 1.0, 'auroc': 1.0}
+{'test_split': 'fine_tuned', 'accuracy': 1.0, 'macro_f1': 1.0, 'auroc': 1.0}
+{'test_split': 'fine_tuned', 'accuracy': 1.0, 'macro_f1': 1.0, 'auroc': 1.0}
+{'test_split': 'fine_tuned', 'accuracy': 1.0, 'macro_f1': 1.0, 'auroc': 1.0}
+{'delta_vs_baselines': {'majority': 0.5, 'residue_composition': 0.25, 'hydrophobic_fraction': 0.55, 'longest_hydrophobic_run': 0.0}, 'report': 'outputs/esm2_protein_evaluation_report.json'}
+{'split': 'test', 'n': 20, 'accuracy': 1.0, 'macro_f1': 1.0, 'auroc': 1.0}
+{'reload_parity': 'PASS', 'labels_equal': True, 'max_abs_score_diff': 0.0, 'loaded_from': 'outputs/esm2_protein_adapter'}
+```
+
+**Refused as designed** (DAT20 refusal record, 2026-11-02 18:49:13 UTC start, blob `2bd0a8df`). Overrides, set by `--set` on a copy of the blob: `USE_BYOD` `False` → `True` and `BYOD_PATH` `''` → `'/content/sample_data/california_housing_test.csv'`. The suite cut the run copy right after the refusing cell `esm2_protein-17`, dropping 17 cells (8 of them code cells), which reproduces `Run all` stopping at the first error; the cut copy is `run_copy.ipynb`, SHA-256 `4c6b56c33b21bed689ce25f791b131dcd435dbd1a32fc1b8812d6e90209c7db5` (Git blob `29600ae5`), equal to the summary's `run_copy_sha256`. Its 8 code cells were logged in order by `exec.log`; the earlier code cells completed without an error output; the refusing cell's only error output has `ename` `IsolatedCellRefusal` and no Python stack trace (its traceback is the single refusal line), and its output holds exactly one `Refused:` line:
+
+```text
+Refused: california_housing_test.csv: ValueError: CSV header ['longitude', 'latitude', 'housing_median_age', 'total_rooms', 'total_bedrooms', 'population', 'households', 'median_income', 'median_house_value'] is missing required column(s) ['id', 'sequence', 'label']; fix the file, then run this cell and every cell after it again (the earlier results of this session and their outputs/ files were removed).
+```
+
+This run says nothing about the 17 cut cells, which did not run in it. Session `suite-esm2-bec13b9-4cf7`, wall 106.4 s. Retained evidence: [`execution-evidence/2026-11-02/`](execution-evidence/2026-11-02/).
+
+**Local-path redaction.** Local paths were replaced byte-wise by `<local-run-dir>` (and the Colab CLI install path by `<colab-cli-tool-dir>/`, where present) before the first commit; each executed notebook and run copy was checked against its `run_summary.json` before any edit.
+
+| File (under `docs/execution-evidence/2026-11-02/`) | Captured SHA-256 | Committed SHA-256 |
+|---|---|---|
+| `esm2_protein_colab_bec13b9_colab-cli-t4_default.ipynb` | `beff175f67ca12101c3b9ea1eaa6f332eed0f4dd57d282f9b8f9bc38e4ac1ed1` | `beff175f67ca12101c3b9ea1eaa6f332eed0f4dd57d282f9b8f9bc38e4ac1ed1` (unchanged, no local path) |
+| `esm2_protein_colab_bec13b9_colab-cli-t4_default_exec.log` | `10509bd2a9c3de9d34d77513f902f74d6f77c8103b4a37c954ce396d90ebdf4e` | `9a9d118e61088bbd0f9fd6a7b1fd1e5ae02746e4a7eda2a11502a291ba33b14d` (2 local-path replacements) |
+| `esm2_protein_colab_bec13b9_colab-cli-t4_default_run_summary.json` | `f62230b1ecdedcc0b459f6d6e581b76a6690f97a2fd0605516015dfcf4b2697d` | `f62230b1ecdedcc0b459f6d6e581b76a6690f97a2fd0605516015dfcf4b2697d` (unchanged, no local path) |
+
+| File (under `docs/execution-evidence/2026-11-02/`) | Captured SHA-256 | Committed SHA-256 |
+|---|---|---|
+| `esm2_protein_colab_bec13b9_colab-cli-t4_refusal.ipynb` | `5cfbe1597f6793a89d2f1829c7f750841537a1c90893db39aa40d9f045709c17` | `5cfbe1597f6793a89d2f1829c7f750841537a1c90893db39aa40d9f045709c17` (unchanged, no local path) |
+| `esm2_protein_colab_bec13b9_colab-cli-t4_refusal_exec.log` | `542f0fbe64fbdae7477678be4895269d0f5d690e4c97465d020f90639c114e63` | `06925cbe5d03505785fb935b9a724314daac5dae1a758418540ca8538fa100c3` (2 local-path replacements) |
+| `esm2_protein_colab_bec13b9_colab-cli-t4_refusal_run_summary.json` | `ea1d22deacbdee0a471042f84088cc045bded6e5404649e0ad612a9788617250` | `ea1d22deacbdee0a471042f84088cc045bded6e5404649e0ad612a9788617250` (unchanged, no local path) |
+| `esm2_protein_colab_bec13b9_colab-cli-t4_refusal_run_copy.ipynb` | `4c6b56c33b21bed689ce25f791b131dcd435dbd1a32fc1b8812d6e90209c7db5` | `4c6b56c33b21bed689ce25f791b131dcd435dbd1a32fc1b8812d6e90209c7db5` (unchanged, no local path) |
+
+Not exercised by these runs: an accepted BYOD input (REL12), a browser `Run all` of the interactive journeys (REL2), and every other open gate named in this file; these runs close none of them.
+
 ## Current status
 
-**Candidate.** The 2026-09-18 promotion rested on a Kaggle run of blob `638ec73e83d6` that completed only after a
+**Candidate.** The current blob `2bd0a8df` (`main` at `bec13b9`, after the 2026-11 lock upgrades) shows a refused BYOD input as exactly one `Refused: <file>: <reason>` line, with no traceback, and stops Run all at that cell. Its default path (2026-11-02; 16 code cells, exit 0, 0 errors) and its scripted DAT20 refusal (2026-11-02; `USE_BYOD=True;BYOD_PATH=/content/sample_data/california_housing_test.csv`: exactly one `Refused:` line at cell `esm2_protein-17`, no traceback, earlier cells clean, VM released) both passed on a hosted Colab Tesla T4 (Colab CLI `colab exec -f`, not a browser `Run all`), and the hosted runs of earlier blobs, including `8957ea6a`, are history for it (REL14). The remaining gates are REL12 (a hosted BYOD run with an accepted input) and REL2 (a browser run of the interactive journeys).
+
+**History (earlier blob; REL14).** The blob `8957ea6a` (the current blob on 2026-10-29; history since the 2026-11 lock upgrades) (code commit `d9dc7f3`) shows a refused BYOD input as one `Refused: <file>: <reason>` line with no traceback, removes the earlier run's results and `outputs/` files and stops Run all at that cell, while genuine failures keep their traceback (NOTEBOOK_SPEC DAT19/DAT20); on 2026-10-29 its default path (16 code cells, exit 0, 0 errors) and its scripted DAT20 refusal (`USE_BYOD=True;BYOD_PATH=/content/sample_data/california_housing_test.csv`: exactly one `Refused:` line at cell `esm2_protein-17`, no traceback, earlier cells clean, VM released) both passed on a hosted Colab Tesla T4 (Colab CLI `colab exec -f`, not a browser `Run all`). The remaining gates then were REL12 (a hosted BYOD run with an accepted input) and REL2 (a browser run of the interactive journeys); earlier blobs' runs are history (REL14).
+
+**History (earlier blobs; REL14).** Status then: **Candidate.** The 2026-09-18 promotion rested on a Kaggle run of blob `638ec73e83d6` that completed only after a
 manual restart following the in-kernel install; under NOTEBOOK_SPEC 2.2 (RUN1, RUN10) that is not a one-pass Run all,
 so the Notebook Review Framework v1 review (2026-10-03, ESM-M1) returned the repository to Candidate. The revised
 notebook builds an isolated, hash-locked environment instead (Linux x86_64 only), and also fixes the review's
 baseline (ESM-M2), BYOD (ESM-M3, ESM-m2), guided-layer (ESM-M4) and activity (ESM-m1) findings. Its local CPU
 pre-flight (above) is not promotion evidence. On 2026-10-04 blob `c8b7a65eab9b` (commit `37f7112`)
 completed one pass with no restart and 0 errors on a fresh Colab Tesla T4 under the Colab CLI (16/16 code cells,
-recorded above). That run is sequential CLI execution, not a browser Run all. Status stays **Candidate**: promotion
-still needs the BYOD gate of step 6 (REL12) and the maintainer's approval.
-
-The current blob `8957ea6a` (code commit `d9dc7f3`) shows a refused BYOD input as one `Refused: <file>: <reason>` line with no traceback, removes the earlier run's results and `outputs/` files and stops Run all at that cell, while genuine failures keep their traceback (NOTEBOOK_SPEC DAT19/DAT20); on 2026-10-29 its default path (16 code cells, exit 0, 0 errors) and its scripted DAT20 refusal (`USE_BYOD=True;BYOD_PATH=/content/sample_data/california_housing_test.csv`: exactly one `Refused:` line at cell `esm2_protein-17`, no traceback, earlier cells clean, VM released) both passed on a hosted Colab Tesla T4 (Colab CLI `colab exec -f`, not a browser `Run all`). The remaining gates are REL12 (a hosted BYOD run with an accepted input) and REL2 (a browser run of the interactive journeys); earlier blobs' runs are history (REL14).
+recorded above). That run is sequential CLI execution, not a browser Run all. Status then stayed **Candidate**: promotion
+then still needed the BYOD gate of step 6 (REL12) and the maintainer's approval.
